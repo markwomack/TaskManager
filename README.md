@@ -37,13 +37,20 @@ changes the Task Manager will start or stop execution. The pin can be connected 
 pushbutton, with the button controlling the starting and stopping of the execution.</p>
 
 ## Caveat
-This library is something of a 'task manager', and it is built with something called
+<p>This library is something of a 'task manager', and it is built with something called
 a 'timer'. However, it does not use any of the hardware timers found in Arduino. It uses
 a software based, best effort timer. While it is pretty accurate when running just a few,
 quickly executed tasks, don't expect it to be entirely accurate. If two tasks are scheduled
 to execute at the same frequency, one is going to run before the other, in a random order.
 If one task takes a long time to execute, its execution may run over the expected start
-time of a subsequent task. Be aware of these limitations.
+time of a subsequent task. Be aware of these limitations.</p>
+
+## Dependencies
+<p>This library has a dependency on another library I have released called ArduinoLogging 
+  (https://github.com/markwomack/ArduinoLogging). It uses it to print
+debug and state messages. You can either download and install the ArduinoLogging library
+to the Arduino library directory, or you can change the calls to use Serial directly, or
+you can comment them out completely.</p>
 
 ## Examples
 <p>The example sketches demonstrate almost all of the Task Manager features
