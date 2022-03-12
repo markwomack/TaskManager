@@ -1,5 +1,6 @@
 # TaskManager
-<p>This is a library that can be used to register and execute tasks at a set frequency.
+<p>This is an Arduino library that can be used to register and execute tasks at a
+set frequency.
 
 ## Acknowledgments
 <p>Far back in time I built the precursors of this library on some excellent code from
