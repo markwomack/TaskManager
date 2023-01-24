@@ -7,154 +7,244 @@
 #include <DebugMsgs.h>
 
 #include "TaskManager.h"
-#include "Timer.h"
+#include "Task.h"
 
-#define MAX_NUMBER_OF_CALLBACKS (MAX_NUMBER_OF_EVENTS - 1)
-
-TaskManager::TaskManager() { /* Nothing to see here, move along.*/ }
-
-// This is a static method that is used to start execution.  It first calls
-// the sketchSetupCallback method and then is schedules execution of the execute method.
-void localStartExecution(TaskManagerContext* taskManagerContext) {
-	// If already executing, then just return
-	if (taskManagerContext->isExecuting) {
-		return;
-	}
-	DebugMsgs.println("*** Starting execution");
-	(*(taskManagerContext->sketchStartCallback))();
-	taskManagerContext->isExecuting = true;
-}
-
-// This is a static method that is used to end execution.  It first stops the
-// calls to the execute method and then it calls the sketchStopCallback method.
-void localStopExecution(TaskManagerContext* taskManagerContext) {
-	// If not executing, then just return
-	if (!taskManagerContext->isExecuting) {
-		return;
-	}
-	DebugMsgs.println("*** Stopping execution");
-	
-	// Stop execution of all registered callbacks
-	for(int index = 0; index < MAX_NUMBER_OF_CALLBACKS; index++) {
-		taskManagerContext->callbackReferences[index] = 
-			taskManagerContext->timer.stop(
-				taskManagerContext->callbackReferences[index]);
-	}
-	
-	(*(taskManagerContext->sketchStopCallback))();
-	taskManagerContext->isExecuting = false;
-	DebugMsgs.println("*** Ready to start execution");
-}
-
-// This is a static method that checks the state of the start/reset button.  It
-// is checked every 10ms to allow for bouncing/noise in the button.
-void localCheckButton(void* context) {
-	TaskManagerContext* taskManagerContext = (TaskManagerContext*)context;
-	int currentButtonState = digitalRead(taskManagerContext->buttonPin);
-	if (currentButtonState == !taskManagerContext->buttonDefaultState &&
-	      taskManagerContext->oldButtonState == taskManagerContext->buttonDefaultState) {
-		if (!taskManagerContext->isExecuting) {
-			localStartExecution(taskManagerContext);
-		} else {
-			localStopExecution(taskManagerContext);
-		}
-	}
-	taskManagerContext->oldButtonState = currentButtonState;
-}
-
-// Called to perform idle behavior when the task manager is not executing.
-void localDoIdle(void* context) {
-  TaskManagerContext* taskManagerContext = (TaskManagerContext*)context;
-  if (!taskManagerContext->isExecuting) {
-    (*(taskManagerContext->idleCallback))();
+TaskManager::TaskManager() {
+  for (int x = 0; x < MAX_TASKS; x++) {
+    emptyTaskEvent(&_taskEvents[x]);
   }
+  emptyTaskEvent(&_idleTaskEvent);
+  _isExecuting = false;
+  _nextIndex = 0;
 }
 
-void TaskManager::setup(void (*sketchSetupCallback)(), void (*sketchStartCallback)(),
-    void (*sketchStopCallback)(), void (*idleCallback)()) {
-  this->setup(-1, LOW, sketchSetupCallback, sketchStartCallback,
-    sketchStopCallback, idleCallback);
-}
+/**
+ Register a task with the task manager, return and identifier for the task.
+ -1 will be returned if the task could not be added. The setup method of the
+ task will be called, and if the task manager is running, the start method
+ of the task will also be called.
+ */
+int8_t TaskManager::addTask(Task* task, uint32_t periodInMillis) {
+  int index = findFreeSlot();
+  if (index == -1) {
+    return -1;
+  }
 
-void TaskManager::setup(int8_t buttonPin, char buttonDefaultState,
-    void (*sketchSetupCallback)(), void (*sketchStartCallback)(),
-    void (*sketchStopCallback)(), void (*idleCallback)()) {
-
-	DebugMsgs.println("*** Setting up");
-			
-	_taskManagerContext.buttonPin = buttonPin;
-	_taskManagerContext.oldButtonState = buttonDefaultState;
-  _taskManagerContext.buttonDefaultState = buttonDefaultState;
-	_taskManagerContext.isExecuting = false;
-	_taskManagerContext.sketchStartCallback = sketchStartCallback;
-	_taskManagerContext.sketchStopCallback = sketchStopCallback;
-	_taskManagerContext.idleCallback = idleCallback;
-	for(int index = 0; index < MAX_NUMBER_OF_CALLBACKS; index++) {
-		_taskManagerContext.callbackReferences[index] = TIMER_NOT_AN_EVENT;
-	}
-	
-	// Call the sketchSetupCallback just once
-  (*(sketchSetupCallback))();
+  _taskEvents[index].status = ACTIVE;
+  _taskEvents[index].task = task;
+  _taskEvents[index].periodInMillis = periodInMillis;
+  task->setup();
+  
+  if (_isExecuting) {
+    startTask(&_taskEvents[index]);
+  }
     
-  // Register internal callback for tracking button pushes if pin registered
-  if (_taskManagerContext.buttonPin != -1) {
-  	pinMode(_taskManagerContext.buttonPin, INPUT);
-  	_taskManagerContext.timer.every(10, localCheckButton, (void*)&_taskManagerContext);
-  }
-
-  // Register idle callback if callback registered.
-	if (_taskManagerContext.idleCallback) {
-	  _taskManagerContext.timer.every(50, localDoIdle, (void*)&_taskManagerContext);
-	}
-	
-	DebugMsgs.println("*** Ready to start execution");
+  return index;
 }
 
-void TaskManager::start(void) {
-  localStartExecution(&_taskManagerContext);
+int8_t TaskManager::addBlinkTask(uint8_t ledPin, uint32_t periodInMillis) {
+    _builtinBlinkTask.setLedPin(ledPin);
+    return addTask(&_builtinBlinkTask, periodInMillis);    
+}
+
+/**
+ Add a BlinkTask with the given period.
+ */
+int8_t TaskManager::addBlinkTask(uint32_t periodInMillis) {
+  return addTask(&_builtinBlinkTask, periodInMillis);
+}
+
+int8_t TaskManager::addIdleTask(Task* task, uint32_t periodInMillis) {
+  _idleTaskEvent.status = ACTIVE;
+  _idleTaskEvent.task = task;
+  _idleTaskEvent.periodInMillis = periodInMillis;
+  task->setup();
+  startTask(&_idleTaskEvent);
+}
+
+/**
+ Change the period that the task in executed. Return -1 if the task
+ does not exist.
+ */
+int8_t TaskManager::changeTaskPeriod(int8_t taskIdentifier, uint32_t newPeriodInMillis) {
+  if (_taskEvents[taskIdentifier].status == ACTIVE) {
+    _taskEvents[taskIdentifier].periodInMillis = newPeriodInMillis;
+    return taskIdentifier;
+  }
+  
+  return -1;
+}
+
+/**
+ Remove a task from the task manager. Return -1 if the task does
+ not exist. If the task manager is currently running, call the
+ stop method of the task.
+ */
+int8_t TaskManager::removeTask(int8_t taskIdentifier) {
+  if (_taskEvents[taskIdentifier].status == ACTIVE) {
+    if (_isExecuting) {
+      _taskEvents[taskIdentifier].task->stop();
+    }
+    emptyTaskEvent(&_taskEvents[taskIdentifier]);
+    return taskIdentifier;
+  }
+  
+  return -1;
+}
+
+/**
+  Remove all of the registered tasks. If the task manager is currently
+  running, call the stop method for task.
+ */
+void TaskManager::removeAllTasks(void) {
+  for (int x = 0; x < MAX_TASKS; x++) {
+    // if the task manager is currently executing, then call the stop method
+    // of any registered task
+    if (_isExecuting && _taskEvents[x].status == ACTIVE) {
+      _taskEvents[x].task->stop();
+    }
+    emptyTaskEvent(&_taskEvents[x]);
+  } 
 }
 
 bool TaskManager::isExecuting(void) {
-  return _taskManagerContext.isExecuting;
+  return _isExecuting;
 }
 
-// Called by the sketch to execute a loop.
-void TaskManager::loop() {
-	_taskManagerContext.timer.update();
+/**
+  Start the exeution of the task manager.
+ */
+void TaskManager::start(void) {
+  if (_isExecuting) {
+    return;
+  }
+  
+  if (_idleTaskEvent.status == ACTIVE) {
+    _idleTaskEvent.task->stop();
+  }
+  
+  DebugMsgs.debug().println("*** Starting execution");
+  
+  // call the start method of all registered tasks
+  for (int8_t x = 0; x < MAX_TASKS; x++) {
+    startTask(&_taskEvents[x]);
+  }
+  
+  // set the first index to be checked for execution and start execution
+  _nextIndex = 0;
+  _isExecuting = true;
 }
 
-// Can be called by the sketch to stop execution of the task manager.
-void TaskManager::stop() {
- DebugMsgs.println("*** Stopping execution by request!");
-  localStopExecution(&_taskManagerContext);
+void TaskManager::startMonitoringButton(uint8_t buttonPin, uint8_t defaultButtonState) {
+  _buttonDetector.setup(buttonPin, defaultButtonState);
+  DebugMsgs.debug().println("*** Ready to start execution");
 }
 
-// Called by the sketch to register a callback that will get executed as part
-// of the loop processing.
-int8_t TaskManager::callbackEvery(unsigned long period,
-		void (*callback)(void*), void* context) {
-			
-	for(int index = 0; index < MAX_NUMBER_OF_CALLBACKS; index++) {
-		if (_taskManagerContext.callbackReferences[index] != TIMER_NOT_AN_EVENT) {
-			continue;
-		}
-		_taskManagerContext.callbackReferences[index] = 
-			_taskManagerContext.timer.every(period, callback, context);
-		return _taskManagerContext.callbackReferences[index];
-	}
-	return CALLBACK_NOT_INSTALLED;
+/**
+ Find the next task that it is time to execute or do nothing
+ if it is not time to execute any registered tasks.
+ */
+void TaskManager::update(void) {
+  if (!_isExecuting) {
+    executeTask(&_idleTaskEvent);
+  }
+
+  if (_buttonDetector.buttonPressed()) {
+    _isExecuting ? stop() : start();
+  }
+
+  if (!_isExecuting) {
+    return;    
+  } 
+  
+  uint8_t index = _nextIndex;
+  bool executed = false;
+  
+  // find the first task to be executed and execute
+  do {
+    executed = executeTask(&_taskEvents[index]);
+    
+    // the next task to be checked for execution
+    index = (index + 1) % MAX_TASKS;
+  
+  // if nothing has been executed and have not looped around to beginning, then keep going
+  } while(!executed && index != _nextIndex);
+  
+  // The next index to start with in next update call.
+  _nextIndex = index;
 }
 
-// Called by the sketch to stop the execution of specific callback with the
-// given callback id.
-int8_t TaskManager::removeCallback(int8_t callbackId) {
-	for(int index = 0; index < MAX_NUMBER_OF_CALLBACKS; index++) {
-		if (_taskManagerContext.callbackReferences[index] != callbackId) {
-			continue;
-		}
-		_taskManagerContext.callbackReferences[index] = 
-			_taskManagerContext.timer.stop(callbackId);
-		return _taskManagerContext.callbackReferences[index];
-	}
-	return CALLBACK_NOT_INSTALLED;
+/**
+ Stop the excution of the task manager.
+ */
+void TaskManager::stop(void) {
+  if (!_isExecuting) {
+    return;
+  }
+  
+  DebugMsgs.debug().println("*** Stopping execution");
+
+  // call the stop method of all the registered tasks
+  for (int8_t x = 0; x < MAX_TASKS; x++) {
+    if (_taskEvents[x].status == ACTIVE) {
+      _taskEvents[x].task->stop();
+    }      
+  }
+  
+  // stop execution
+  _isExecuting = false;
+
+  DebugMsgs.debug().println("*** Ready to start execution");
+  
+  startTask(&_idleTaskEvent);
 }
+
+bool TaskManager::startTask(TaskEvent* taskEvent) {
+  if (taskEvent->status == ACTIVE) {
+      taskEvent->task->start();
+      taskEvent->lastExecutionTime = millis();
+      return true;
+  }
+  return false;
+}
+
+bool TaskManager::executeTask(TaskEvent* taskEvent) {
+  if (taskEvent->status == ACTIVE) {
+    uint32_t currentMillis = millis();
+    if (currentMillis >= taskEvent->lastExecutionTime + taskEvent->periodInMillis) {
+      taskEvent->task->update();
+      // Make sure this task event is still active (the update could have removed it)
+      if (taskEvent->status == ACTIVE) {
+        taskEvent->lastExecutionTime = millis();
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ Return the index of a free slot in the taskEvents array or return -1
+ if no slot is available.
+ */
+int8_t TaskManager::findFreeSlot(void) {
+  for (int8_t x = 0; x < MAX_TASKS; x++) {
+    if (_taskEvents[x].status == EMPTY) {
+      return x;
+    }
+  }
+
+  return -1;  
+}
+
+/**
+ Sets a slot in the taskEvents array to EMPTY.
+ */
+void TaskManager::emptyTaskEvent(TaskEvent* taskEvent) {
+    taskEvent->status = EMPTY;
+    taskEvent->task = NULL;
+    taskEvent->periodInMillis = 0;
+    taskEvent->lastExecutionTime = 0;
+}
+
+TaskManager taskManager;
