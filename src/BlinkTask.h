@@ -19,7 +19,7 @@
 //
 // If no pin value is given when the BlinkTask is created and
 // not set by using setLedPin(), then the value in the Arduino
-// define constant LED_BUILTIN is used by default. The builtin
+// defined constant LED_BUILTIN is used by default. The builtin
 // led pin is board specific, but is usually 13 (as it is on the
 // Arduino Uno).
 //
