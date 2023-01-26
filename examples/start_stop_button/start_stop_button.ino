@@ -7,6 +7,7 @@
 // monitor a physical push button, and when the button is
 // pushed the task manager will start and when pushed again
 // the task manager will stop.
+// Please use the serial monitor to watch its activity.
 
 #include <DebugMsgs.h>
 
@@ -17,6 +18,8 @@
 // that is pulled LOW (see README for details)
 const int BUTTON_PIN(2);
 
+// This is a simple task that increments a value and
+// then prints its value.
 class CounterTask : public Task {
   public:
     void start(void) {
@@ -36,7 +39,7 @@ class CounterTask : public Task {
 };
 CounterTask counterTask;
 
-// Use a provided class to blink during idle
+// This is a blink task used as the idle task
 BlinkTask idleBlinkTask;
 
 void setup() {
@@ -49,6 +52,7 @@ void setup() {
   taskManager.addIdleTask(&idleBlinkTask, 100);
 
   // Add a blink task that will blink every half second
+  // This uses the builtin blink task.
   taskManager.addBlinkTask(500);
 
   // Add the counter task to execute every second
