@@ -32,7 +32,7 @@ find this version to be much simpler and usable.</p>
 get executed, and the TaskManager that executes the tasks. Tasks are added to the
 TaskManager with a rate, or period, specified in milliseconds. The period is how
 often the Task will be executed. Multiple tasks can be added to the TaskManager,
-and each executed at its own period. So, you could have a task that checks records
+and each executed at its own period. So, you could have a task that records
 a sensor value every 100 milliseconds and another task that prints out the current
 value every second.</p>
 <p>Because almost every Arduino sketch uses a blinking LED to indicate it is running
