@@ -48,7 +48,7 @@ manager will be started. When it is pressed again the task manager will be stopp
 <p>The TaskManager can be started and stopped via a button as described above, or
 programmatically in the sketch code. In either case, there will be times with the
 task manager is idle. An idle task can be added to the task manager that will executed
-only when the task manager is idle, and a specified period. So, you could have an
+only when the task manager is idle, and at a specified period. So, you could have an
 instance of a BlinkTask as the idle task that blinks at a faster rate than a BlinkTask
 you have installed and running when the task manager is running. Easy feedback for
 when the task manager is executing or idle.</p>
