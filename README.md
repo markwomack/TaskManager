@@ -58,13 +58,13 @@ The Task class is a simple method with just four methods. It is not required to
 implement all the methods, only the methods you need. The Task base class has
 empty versions of each method so you don't have to implement your own empty versions.
 
-### setup()
+#### setup()
 <p>The setup method is called only once, when the task is first added to the
 task manager. Actions that only need to be performed once for setup should be in
 this method. For example setting up pin input/output modes, or setting variables
 to their starting values.</p>
 
-### start()
+#### start()
 <p>The start method is called every time the task manager is started. So, it is a 
 good place to reset variables to their starting values if their state does not need
 to be maintained across task manager starting and stopping.</p>
@@ -72,13 +72,13 @@ to be maintained across task manager starting and stopping.</p>
 the task manager takes care to call the start method when it is already executing so that
 you can count on consistent behavior.</p>
 
-### update()
+#### update()
 <p>The update method is called every time the task is supposed to execute. The task
 manager has already determined that it is time for the task to execute according to the
 period that was given when the task was added. So, the task just needs to implement its
 functionality, whatever you want the task to do.</p>
 
-### stop()
+#### stop()
 <p>The stop method is called every time the task manager is stopped. So, it is a good
 place to place any cleanup code that needs to happen. The task manager can always be
 restarted, and the start method will be described as above, so don't completely cleanup
