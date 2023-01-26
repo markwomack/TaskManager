@@ -6,6 +6,7 @@
 // This examples shows how to use the task manager
 // to manage timed callbacks. The program starts
 // the task manager immediately, and it never stops.
+// Please see the serial monitor to see its activity.
 
 #include <DebugMsgs.h>
 
@@ -34,7 +35,7 @@ class CounterTask : public Task {
 };
 CounterTask counterTask;
 
-// This is a provided class to handle blinking of an LED.
+// This is a task to handle blinking the builtin led
 BlinkTask blinkTask;
 
 void setup() {
