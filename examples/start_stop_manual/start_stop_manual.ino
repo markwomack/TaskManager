@@ -5,6 +5,7 @@
 
 // This example shows how the task manager can be
 // started and stopped from within the code (ie 'manually').
+// Please use the serial monitor to watch its activity.
 
 #include <DebugMsgs.h>
 
@@ -45,10 +46,12 @@ class TaskManagerStopperTask : public Task {
     TaskManagerStopperTask() {};
     
     void start(void) {
+      // Record the start time
       millisAtStart = millis();
     };
 
     void update(void) {
+      // If it has been 20 seconds, stop the task manager
       if ((millis() - millisAtStart)/1000 >= 20) {
         DebugMsgs.debug().println("Callback telling task manager to stop now.");
         taskManager.stop();
@@ -60,7 +63,7 @@ class TaskManagerStopperTask : public Task {
 };
 TaskManagerStopperTask taskManagerStopperTask;
 
-// This is a provided task that will blink the LED.
+// This blink task to indicate the code is running
 BlinkTask blinkTask;
 
 void setup() {
@@ -72,11 +75,10 @@ void setup() {
   // Blink the builtin LED every half second.
   taskManager.addTask(&blinkTask, 500);
 
-  // Count and print every second.
+  // add task: count and print every second.
   taskManager.addTask(&counterTask, 1000);
 
-  // Check to see if task manager should be stopped (at 20 seconds),
-  // check every 10th of a second. 
+  // add task: stop task manager after 20s, check every 10th of a second 
   taskManager.addTask(&taskManagerStopperTask, 100);
 
   // Start the task manager
