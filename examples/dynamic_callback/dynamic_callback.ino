@@ -5,6 +5,7 @@
 
 // This example shows the dynamic removing and adding
 // callbacks while the task manager is executing.
+// Please use the serial monitor to see its activity.
 
 #include <DebugMsgs.h>
 
@@ -12,24 +13,30 @@
 #include "Task.h"
 #include "BlinkTask.h"
 
+// This is a context shared between the two tasks
 struct SharedContext {
   unsigned long counter;
   int8_t taskIdentifier;
 };
 SharedContext sharedContext;
 
+// This is the first task, it counts to 10 in increments of 1.
+// When it reaches 10, it adds the second task and removes
+// itself.
 class Counter1Task : public Task {
   public:
     void setSharedContext(SharedContext* sharedContext) {
+      // reference to the shared context
       _sharedContext = sharedContext;
     };
 
     void setNextTask(Task* nextTask) {
+      // reference to the second task
       _nextTask = nextTask;
     };
 
     void start(void) {
-      // This counter always starts at zero
+      // This counter always resets to zero
       _sharedContext->counter = 0;
     };
 
@@ -38,7 +45,7 @@ class Counter1Task : public Task {
       // Increment the counter
       _sharedContext->counter++;
 
-      // Print out the current time and the new value
+      // Print out the current value
       DebugMsgs.debug().print("Counter1: ").println(_sharedContext->counter);
 
       // If the counter is greater or equal to 10, remove this task
@@ -63,13 +70,17 @@ class Counter1Task : public Task {
 };
 Counter1Task counter1Task;
 
+// This is the second task, it counts to 20 in increments of 2.
+// When it reaches 20, it adds the first task and removes itself.
 class Counter2Task : public Task {
   public:
     void setSharedContext(SharedContext* sharedContext) {
+      // reference to the shared context
       _sharedContext = sharedContext;
     };
 
     void setNextTask(Task* nextTask) {
+      // reference to the first task
       _nextTask = nextTask;
     };
 
@@ -78,7 +89,7 @@ class Counter2Task : public Task {
       // Increment the counter
       _sharedContext->counter += 2;
 
-      // Print out the current time and the new value
+      // Print out current value
       DebugMsgs.debug().print("Counter2: ").println(_sharedContext->counter);
 
       // If the counter is greater or equal to 20, remove this task
@@ -103,9 +114,9 @@ class Counter2Task : public Task {
 };
 Counter2Task counter2Task;
 
+// This is a blink task used to indicate
+// the code is running
 BlinkTask blinkTask;
-
-int8_t callbackId;
 
 void setup() {
   Serial.begin(9600);
@@ -116,13 +127,14 @@ void setup() {
   // Tasks reference the shared context and each other
   counter1Task.setSharedContext(&sharedContext);
   counter1Task.setNextTask(&counter2Task);
+  
   counter2Task.setSharedContext(&sharedContext);
   counter2Task.setNextTask(&counter1Task);      
   
   // Add a blink task to blink every half second
   taskManager.addTask(&blinkTask, 500);
 
-  // Add the first counter task, and set its identifier into the shared context
+  // Add the first task, and set its identifier into the shared context
   sharedContext.taskIdentifier = taskManager.addTask(&counter1Task, 1000);
   
   // Start the task manager
