@@ -6,3 +6,4 @@ pin is connected to a momentary button. When the button is pressed
 the Task Manager starts or stops executing. Please see the image in
 this directory for a picture of the circuit that will work with the
 sketch.
+![](https://github.com/markwomack/TaskManager/blob/main/examples/start_stop_button/pushbutton_circuit_example.png?raw=true)
