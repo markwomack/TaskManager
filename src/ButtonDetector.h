@@ -8,6 +8,11 @@
 
 const uint32_t DEBOUNCE_DELAY(50);    // the debounce time; increase if the output flickers
 
+// This class is used by the task manager to monitor a
+// momentary button on a given pin. It is adapted from a public
+// domain Arduino example that can be found here:
+//   https://www.arduino.cc/en/Tutorial/BuiltInExamples/Debounce
+//
 class ButtonDetector {
   public:
     ButtonDetector() { _isSetup = false; };
@@ -22,17 +27,20 @@ class ButtonDetector {
       _isSetup = true;
     };
 
+    // Returns true if the button has been pressed, false
+    // at all other times, even button release.
     bool buttonPressed() {
+      // If not setup, exit now.
       if (!_isSetup) {
         return false;
       }
 
       bool buttonPressed = false;
       
-      // read the state of the switch into a local variable:
+      // read the state of the button into a local variable:
       uint8_t reading = digitalRead(_buttonPin);
 
-      // If the switch changed, due to noise or pressing:
+      // If the button changed, due to noise or pressing:
       if (reading != _lastButtonState) {
         // reset the debouncing timer
         _lastDebounceTime = millis();
