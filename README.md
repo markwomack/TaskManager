@@ -85,14 +85,14 @@ restarted, and the start method will be described as above, so don't completely 
 variables that will be needed.</p>
 
 ## Caveat
-<p>This library provides a 'task manager' that will execute tasks at defined rates.
+<p>This library provides a 'task manager' that will execute 'tasks' at defined rates.
 However, it does not use any of the hardware timers found in Arduino. It provides
 a software based, best effort algorithm to determine when to execute the tasks. While it
 is pretty accurate when running just a few, quickly executed tasks, don't expect it to be
 entirely accurate. If two tasks are scheduled to execute at the same period, one is going
 to run before the other, in a random order. If one task takes a long time to execute,
 its execution may run over the expected start time of a subsequent task. Just be aware of
-these limitations.</p>
+these limitations when implementing and timing your tasks.</p>
 
 ## Dependencies
 <p>This library has a dependency on another library I have released called ArduinoLogging 
