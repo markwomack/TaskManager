@@ -36,7 +36,7 @@ class TaskManager {
     // If you need multiple led blinkers, add individual instances using addTask().
     // Returns a task identifer for reference in other methods, or -1 if the
     // task could not be added.
-    int8_t addBlinkTask(uint8_t ledPin, uint32_t periodInMillis = 1000);
+    int8_t addBlinkTask(uint8_t ledPin, uint32_t periodInMillis);
   
     // Adds a BlinkTask using the LED_BUILTIN pin that will execute every periodInMillis.
     // Only a single BlinkTask can be added using this method. It is provided as
@@ -49,7 +49,7 @@ class TaskManager {
     // Adds a task that will only be executed when the task manager is idle, and
     // the task will be executed every periodInMillis. For example, this method could
     // be used to add a BlinkTask that does a fast blink when the task manager is idle.
-    int8_t addIdleTask(Task* task, uint32_t periodInMillis);
+    void addIdleTask(Task* task, uint32_t periodInMillis);
   
     // Changes the period of task referenced by taskIdentifier, and the task will
     // execute every newPeriodInMillis.
