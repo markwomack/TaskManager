@@ -35,7 +35,13 @@
 //
 class Task {
   public:
-    Task() {};
+    Task() { 
+      _taskName = String("");
+    };
+    
+    Task(String taskName) {
+      _taskName = String(taskName);
+    }
   
     // Called when the task is added to the task manager.
     virtual void setup(void) {
@@ -58,6 +64,17 @@ class Task {
     virtual void stop(void) {
       // base version does nothing
     };
+
+    String getTaskName(void) {
+      return _taskName;
+    };
+
+    void setTaskName(String taskName) {
+      _taskName = String(taskName);
+    };
+
+  protected:
+    String _taskName;
 };
 
 #endif // TASK_H
