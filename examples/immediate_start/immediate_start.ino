@@ -8,7 +8,7 @@
 // the task manager immediately, and it never stops.
 // Please see the serial monitor to see its activity.
 
-#include <DebugMsgs.h>
+#include <DebugMsgs.h>  // https://github.com/markwomack/ArduinoLogging
 
 #include "TaskManager.h"
 #include "Task.h"
