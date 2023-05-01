@@ -12,7 +12,6 @@
 #include <DebugMsgs.h>  // https://github.com/markwomack/ArduinoLogging
 
 #include "src/TaskManager.h"
-#include "src/BlinkTask.h"
 
 // This is a pin that is connected to a momentary push button
 // that is pulled LOW (see README for details)
@@ -56,13 +55,14 @@ void setup() {
   DebugMsgs.enableLevel(DEBUG);
 
   // Add a blink task to blink during idle, every 10th of a second
+  // This uses the builtin idle blink task
   taskManager.addIdleBlinkTask(100);
 
   // Add a second idle task that just counts
   taskManager.addIdleTask(&idleCounterTask, 500);
   
   // Add a blink task that will blink every half second
-  // This uses the builtin blink task.
+  // This uses the builtin blink task
   taskManager.addBlinkTask(500);
 
   // Add the counter task to execute every second
