@@ -13,7 +13,10 @@ TaskManager::TaskManager() {
   for (int x = 0; x < MAX_TASKS; x++) {
     emptyTaskEvent(&_taskEvents[x]);
   }
-  emptyTaskEvent(&_idleTaskEvent);
+  for (int x = 0; x < MAX_IDLE_TASKS; x++) {
+    emptyTaskEvent(&_idleTaskEvents[x]);
+  }
+  
   _isExecuting = false;
   _nextIndex = 0;
 }
@@ -56,12 +59,43 @@ int8_t TaskManager::addBlinkTask(uint32_t periodInMillis) {
   return addTask(&_builtinBlinkTask, periodInMillis);
 }
 
-void TaskManager::addIdleTask(Task* task, uint32_t periodInMillis) {
-  _idleTaskEvent.status = ACTIVE;
-  _idleTaskEvent.task = task;
-  _idleTaskEvent.periodInMillis = periodInMillis;
+int8_t TaskManager::addIdleTask(Task* task, uint32_t periodInMillis) {
+
+  // Find the next free spot in the idleTaskEvents array
+  int index = findFreeIdleSlot();
+  if (index == -1) {
+    return -1;
+  }
+
+  // Initialize the taskEvent
+  _idleTaskEvents[index].status = ACTIVE;
+  _idleTaskEvents[index].task = task;
+  _idleTaskEvents[index].periodInMillis = periodInMillis;
+  
+  // Call the task setup method
   task->setup();
-  startTask(&_idleTaskEvent);
+  
+  // If the task manager is not currently executing, call the
+  // start method of the idle task
+  if (!_isExecuting) {
+    startTask(&_idleTaskEvents[index]);
+  }
+    
+  // Return the index as the task identifier
+  return index;
+}
+
+int8_t TaskManager::addIdleBlinkTask(uint8_t ledPin, uint32_t periodInMillis) {
+    // Set the led pin on builtin
+    _builtinIdleBlinkTask.setLedPin(ledPin);
+  
+    // add the builtin
+    return addIdleTask(&_builtinIdleBlinkTask, periodInMillis);    
+}
+
+int8_t TaskManager::addIdleBlinkTask(uint32_t periodInMillis) {
+  // Add the builtin
+  return addIdleTask(&_builtinIdleBlinkTask, periodInMillis);
 }
 
 int8_t TaskManager::changeTaskPeriod(int8_t taskIdentifier, uint32_t newPeriodInMillis) {
@@ -84,6 +118,22 @@ int8_t TaskManager::removeTask(int8_t taskIdentifier) {
       _taskEvents[taskIdentifier].task->stop();
     }
     emptyTaskEvent(&_taskEvents[taskIdentifier]);
+    return 0;
+  }
+  
+  // Return -1 if the taskIdentifier is invalid
+  return -1;
+}
+
+int8_t TaskManager::removeIdleTask(int8_t taskIdentifier) {
+  // If the taskIdentifier is valid, call the stop method of the task
+  // if the task manager is not running, and empty the element of the
+  // _taskEvents array
+  if (_idleTaskEvents[taskIdentifier].status == ACTIVE) {
+    if (!_isExecuting) {
+      _idleTaskEvents[taskIdentifier].task->stop();
+    }
+    emptyTaskEvent(&_idleTaskEvents[taskIdentifier]);
     return 0;
   }
   
@@ -114,17 +164,13 @@ void TaskManager::start(void) {
     return;
   }
   
-  // If there is an idle task, call its stop method
-  if (_idleTaskEvent.status == ACTIVE) {
-    _idleTaskEvent.task->stop();
-  }
+  // Stop all idle tasks
+  stopAllIdleTasks();
   
   DebugMsgs.debug().println("*** Starting execution");
   
   // call the start method of all registered tasks
-  for (int8_t x = 0; x < MAX_TASKS; x++) {
-    startTask(&_taskEvents[x]);
-  }
+  startAllTasks();
   
   // set the first index to be checked for execution in update() call.
   _nextIndex = 0;
@@ -140,9 +186,9 @@ void TaskManager::startMonitoringButton(uint8_t buttonPin, uint8_t defaultButton
 }
 
 void TaskManager::update(void) {
-  // if idle, execute the idle task
+  // if idle, execute next idle task
   if (!_isExecuting) {
-    executeTask(&_idleTaskEvent);
+    _nextIndex = executeNextTask(_nextIndex, _idleTaskEvents, MAX_IDLE_TASKS);
   }
 
   // If the button was pressed, toggle _isExecuting and call
@@ -156,25 +202,8 @@ void TaskManager::update(void) {
     return;    
   } 
   
-  uint8_t index = _nextIndex;
-  bool executed = false;
-  
-  // find the first task to be executed and execute
-  do {
-    executed = executeTask(&_taskEvents[index]);
-    
-    // the next task to be checked for execution
-    index = (index + 1) % MAX_TASKS;
-  
-    // if nothing has been executed and have not
-    // looped around to beginning, then keep going
-  } while(!executed && index != _nextIndex);
-  
-  // The next index to start with in next update call:
-  // If the loop wrapped around, then increment to the next element
-  // for the next update call. Otherwise, use the index returned by
-  // the loop.
-  _nextIndex = (index == _nextIndex) ? (index + 1) % MAX_TASKS : index;
+  // Executing, execute next task
+  _nextIndex = executeNextTask(_nextIndex, _taskEvents, MAX_TASKS);
 }
 
 /**
@@ -188,20 +217,16 @@ void TaskManager::stop(void) {
   
   DebugMsgs.debug().println("*** Stopping execution");
 
-  // call the stop method of all the registered tasks
-  for (int8_t x = 0; x < MAX_TASKS; x++) {
-    if (_taskEvents[x].status == ACTIVE) {
-      _taskEvents[x].task->stop();
-    }      
-  }
+  stopAllTasks();
   
   // stop execution
   _isExecuting = false;
+  _nextIndex = 0;
 
   DebugMsgs.debug().println("*** Ready to start execution");
   
-  // Start the idle task
-  startTask(&_idleTaskEvent);
+  // Start the idle tasks
+  startAllIdleTasks();
 }
 
 // If the taskEvent is active, call the start method and
@@ -214,6 +239,58 @@ bool TaskManager::startTask(TaskEvent* taskEvent) {
       return true;
   }
   return false;
+}
+
+void TaskManager::startAllTasks() {
+  for (int8_t x = 0; x < MAX_TASKS; x++) {
+    startTask(&_taskEvents[x]);
+  }
+}
+
+void TaskManager::startAllIdleTasks() {
+  for (int8_t x = 0; x < MAX_IDLE_TASKS; x++) {
+    startTask(&_idleTaskEvents[x]);
+  }
+}
+
+void TaskManager::stopAllTasks() {
+  // call the stop method of all the registered tasks
+  for (int8_t x = 0; x < MAX_TASKS; x++) {
+    if (_taskEvents[x].status == ACTIVE) {
+      _taskEvents[x].task->stop();
+    }      
+  }
+}
+
+void TaskManager::stopAllIdleTasks() {
+  // call the stop method of all the registered tasks
+  for (int8_t x = 0; x < MAX_IDLE_TASKS; x++) {
+    if (_idleTaskEvents[x].status == ACTIVE) {
+      _idleTaskEvents[x].task->stop();
+    }      
+  }
+}
+
+uint8_t TaskManager::executeNextTask(uint8_t nextTaskIndex, TaskEvent* taskEvents, uint8_t taskEventsSize) {
+  uint8_t index = nextTaskIndex;
+  bool executed = false;
+  
+  // find the first task to be executed and execute
+  do {
+    executed = executeTask(&taskEvents[index]);
+    
+    // the next task to be checked for execution
+    index = (index + 1) % taskEventsSize;
+  
+    // if nothing has been executed and have not
+    // looped around to beginning, then keep going
+  } while(!executed && index != nextTaskIndex);
+  
+  // The next index to start with in next update call:
+  // If the loop wrapped around, then increment to the next element
+  // for the next update call. Otherwise, use the index returned by
+  // the loop.
+  return (index == _nextIndex) ? (index + 1) % taskEventsSize : index;
 }
 
 // If the taskEvent is active, then execute the task if it is
@@ -238,6 +315,17 @@ bool TaskManager::executeTask(TaskEvent* taskEvent) {
 int8_t TaskManager::findFreeSlot(void) {
   for (int8_t x = 0; x < MAX_TASKS; x++) {
     if (_taskEvents[x].status == EMPTY) {
+      return x;
+    }
+  }
+
+  return -1;  
+}
+
+// Return the index of a free slot in the _idleTaskEvents array or return -1.
+int8_t TaskManager::findFreeIdleSlot(void) {
+  for (int8_t x = 0; x < MAX_IDLE_TASKS; x++) {
+    if (_idleTaskEvents[x].status == EMPTY) {
       return x;
     }
   }

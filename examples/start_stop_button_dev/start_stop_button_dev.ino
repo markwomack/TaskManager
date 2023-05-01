@@ -11,7 +11,7 @@
 
 #include <DebugMsgs.h>  // https://github.com/markwomack/ArduinoLogging
 
-#include <TaskManager.h>
+#include "src/TaskManager.h"
 
 // This is a pin that is connected to a momentary push button
 // that is pulled LOW (see README for details)
