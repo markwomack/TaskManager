@@ -14,7 +14,10 @@
 // Maximum number of tasks allowed. If you can change this value, but
 // if you are doing more than 10 tasks there may be a lot of contention
 // between the tasks. YMMV.
-const int MAX_TASKS(10);
+const uint8_t MAX_TASKS(10);
+
+// Maximum number of idle tasks allowed.
+const uint8_t MAX_IDLE_TASKS(3);
 
 // This class is used to manage the task manager. Its simplest usage is
 // to add tasks to be executed, calling start(), and then calling
@@ -49,7 +52,9 @@ class TaskManager {
     // Adds a task that will only be executed when the task manager is idle, and
     // the task will be executed every periodInMillis. For example, this method could
     // be used to add a BlinkTask that does a fast blink when the task manager is idle.
-    void addIdleTask(Task* task, uint32_t periodInMillis);
+    int8_t addIdleTask(Task* task, uint32_t periodInMillis);
+    int8_t addIdleBlinkTask(uint8_t ledPin, uint32_t periodInMillis);
+    int8_t addIdleBlinkTask(uint32_t periodInMillis = 1000);
   
     // Changes the period of task referenced by taskIdentifier, and the task will
     // execute every newPeriodInMillis.
@@ -61,6 +66,12 @@ class TaskManager {
     // responsibility of the original creator to clean up memory.
     int8_t removeTask(int8_t taskIdentifier);
   
+    // Removes the idle task referenced by taskIdentifier, and the task will not be
+    // executed any further. If memory was allocated for the original Task* used
+    // when the task was added, this method will not free that memory. It is the
+    // responsibility of the original creator to clean up memory.
+    int8_t removeIdleTask(int8_t taskIdentifier);
+    
     // Removes all tasks that were previously added. No tasks will be executed
     // after this method is called.
     void removeAllTasks(void);
@@ -108,16 +119,23 @@ class TaskManager {
         uint32_t lastExecutionTime;
     };
 
-    TaskEvent _idleTaskEvent;
+    TaskEvent _idleTaskEvents[MAX_IDLE_TASKS];
     TaskEvent _taskEvents[MAX_TASKS];
     bool _isExecuting;
     uint8_t _nextIndex;   
     
     BlinkTask _builtinBlinkTask;
+    BlinkTask _builtinIdleBlinkTask;
     ButtonDetector _buttonDetector;
     bool startTask(TaskEvent* taskEvent);
+    void startAllTasks();
+    void startAllIdleTasks();
+    void stopAllTasks();
+    void stopAllIdleTasks();
+    uint8_t executeNextTask(uint8_t nextTaskIndex, TaskEvent* taskEvents, uint8_t taskEventsSize);
     bool executeTask(TaskEvent* taskEvent);
     int8_t findFreeSlot(void);
+    int8_t findFreeIdleSlot(void);
     void emptyTaskEvent(TaskEvent* taskEvent);
 };
 
