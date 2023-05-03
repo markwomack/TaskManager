@@ -1,0 +1,19 @@
+{
+    "name": "TaskManager",
+    "keywords": "tasks, task management",
+    "description": "This is a library that can be used to register and execute tasks at a set frequency.",
+    "repository":
+    {
+      "type": "git",
+      "url": "https://github.com/markwomack/TaskManager"
+    },
+    "authors":
+    {
+      "name": "Mark Womack",
+      "url": "https://github.com/markwomack",
+      "maintainer": true
+    },
+    "homepage": "https://github.com/markwomack/TaskManager",
+    "version": "2.1.0",
+    "frameworks": "arduino"
+}
