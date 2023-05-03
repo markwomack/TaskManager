@@ -4,7 +4,7 @@ set frequency.
 
 ## Purpose
 <p>When writing Arduino code that is more complicated than a single task, it usually
-means that several things need to be checked periodically, and when when the right
+means that several things need to be checked periodically, and when the right
 time comes, something gets executed. The TaskManager library provides a simple to use
 framework to write the 'something that gets executed', a Task, and to execute it at a
 specified frequency, like every second.</p>
