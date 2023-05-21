@@ -6,6 +6,8 @@
 #ifndef TASK_H
 #define TASK_H
 
+#include <Arduino.h>
+
 // This is the base class for all tasks implemented to
 // execute in the task manager. It has all of the methods
 // that a new task implementation can override with its
