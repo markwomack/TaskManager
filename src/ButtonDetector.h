@@ -27,6 +27,10 @@ class ButtonDetector {
       _isSetup = true;
     };
 
+    bool isMonitoring() {
+      return _isSetup;
+    };
+    
     // Returns true if the button has been pressed, false
     // at all other times, even button release.
     bool buttonPressed() {

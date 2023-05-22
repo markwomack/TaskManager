@@ -77,7 +77,7 @@ int8_t TaskManager::addIdleTask(Task* task, uint32_t periodInMillis) {
   
   // If the task manager is not currently executing, call the
   // start method of the idle task
-  if (!_isExecuting) {
+  if (!_isExecuting && _buttonDetector.isMonitoring()) {
     startTask(&_idleTaskEvents[index]);
   }
     
@@ -182,6 +182,13 @@ void TaskManager::start(void) {
 void TaskManager::startMonitoringButton(uint8_t buttonPin, uint8_t defaultButtonState) {
   // Setup the _buttonDetector to monitor the button
   _buttonDetector.setup(buttonPin, defaultButtonState);
+  
+  // Start the idle tasks
+  startAllIdleTasks();
+  
+  // set the first index to be checked for execution in update() call.
+  _nextIndex = 0;
+  
   DebugMsgs.debug().println("*** Ready to start execution");
 }
 
