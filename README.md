@@ -27,6 +27,16 @@ and api. But you will have to do some work. I'm sorry about that. As such, the
 previous use of classes from Simon Monk has been replaced and removed. I hope you
 find this version to be much simpler and usable.</p>
 
+## Caveat
+<p>This library provides a 'task manager' that will execute 'tasks' at defined rates.
+However, it does not use any of the hardware timers found on various Arduino boards. It
+provides a software based, best effort algorithm to determine when to execute the tasks.
+While it is pretty accurate when running just a few, quickly executed tasks, don't expect
+it to be entirely accurate. If two tasks are scheduled to execute at the same period,
+one is going to run before the other, in a random order. If one task takes a long time
+to execute, its execution may run over the expected start time of a subsequent task. Just
+be aware of these limitations when implementing and timing your tasks.</p>
+
 ## Design
 <p>The design is very straight forward. Functionality is broken up between Tasks that
 get executed, and the TaskManager that executes the tasks. Tasks are added to the
@@ -35,23 +45,25 @@ often the Task will be executed. Multiple tasks can be added to the TaskManager,
 and each executed at its own period. So, you could have a task that records
 a sensor value every 100 milliseconds and another task that prints out the current
 value every second.</p>
-<p>Because almost every Arduino sketch uses a blinking LED to indicate it is running
-normally, a BlinkTest class is provided. You can create instances of BlinkTest and
-add them to the TaskManager to blink at any period you want. You can have it use the
-LED_BUILTIN LED or you can specify a different pin. Blinking is so common, that the
-TaskManager has one built into it so you can avoid creating a BlinkTest instance
-all the time.</p>
+<p>Because almost every Arduino sketch I write uses a blinking LED to indicate it is
+running normally, a BlinkTest class is provided. You can create instances of BlinkTask
+and add them to the TaskManager to blink at any period you want. You can have it use the
+LED_BUILTIN LED by default or you can specify a different pin. Blinking is so common,
+that the TaskManager has a method to add a BlinkTask built into it so you can avoid
+creating a BlinkTask instance all the time.</p>
 <p>Sometimes you may want to control the execution of the sketch, controlling when it
 starts, and stopping it when needed. The TaskManager can be configured to monitor
 a momentary push button on a designated pin. And when the button is pressed the task
 manager will be started. When it is pressed again the task manager will be stopped.</p>
-<p>The TaskManager can be started and stopped via a button as described above, or
-programmatically in the sketch code. In either case, there will be times with the
-task manager is idle. An idle task can be added to the task manager that will executed
-only when the task manager is idle, and at a specified period. So, you could have an
-instance of a BlinkTask as the idle task that blinks at a faster rate than a BlinkTask
-you have installed and running when the task manager is running. Easy feedback for
-when the task manager is executing or idle.</p>
+<p>The TaskManager can be started and stopped via a button as described above. When
+this is the case, there will be times with the task manager is idle. An idle task can
+be added to the task manager that will executed only when the task manager is idle,
+and at a specified period. So, you could have an instance of a BlinkTask as the idle
+task that blinks at a faster rate than a BlinkTask you have installed when the task
+manaer is running. Easy feedback to indicate when the taskmanager is executing or
+idle. But you can use the idle task mechanism to do more complicated tasks. For
+example, you might have a sensor that monitors battery charge and update a
+display.</p>
 
 ### Task class
 The Task class is a simple method with just four methods. It is not required to
@@ -81,18 +93,8 @@ functionality, whatever you want the task to do.</p>
 #### stop()
 <p>The stop method is called every time the task manager is stopped. So, it is a good
 place to place any cleanup code that needs to happen. The task manager can always be
-restarted, and the start method will be described as above, so don't completely cleanup
-variables that will be needed.</p>
-
-## Caveat
-<p>This library provides a 'task manager' that will execute 'tasks' at defined rates.
-However, it does not use any of the hardware timers found in Arduino. It provides
-a software based, best effort algorithm to determine when to execute the tasks. While it
-is pretty accurate when running just a few, quickly executed tasks, don't expect it to be
-entirely accurate. If two tasks are scheduled to execute at the same period, one is going
-to run before the other, in a random order. If one task takes a long time to execute,
-its execution may run over the expected start time of a subsequent task. Just be aware of
-these limitations when implementing and timing your tasks.</p>
+restarted, and the start method will be called as described as above, so don't
+completely cleanup variables that will be needed across starts and stops.</p>
 
 ## Dependencies
 <p>This library has a dependency on another library I have released called ArduinoLogging 
