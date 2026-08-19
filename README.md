@@ -46,7 +46,7 @@ and each executed at its own period. So, you could have a task that records
 a sensor value every 100 milliseconds and another task that prints out the current
 value every second.</p>
 <p>Because almost every Arduino sketch I write uses a blinking LED to indicate it is
-running normally, a BlinkTest class is provided. You can create instances of BlinkTask
+running normally, a BlinkTask class is provided. You can create instances of BlinkTask
 and add them to the TaskManager to blink at any period you want. You can have it use the
 LED_BUILTIN LED by default or you can specify a different pin. Blinking is so common,
 that the TaskManager has a method to add a BlinkTask built into it so you can avoid
